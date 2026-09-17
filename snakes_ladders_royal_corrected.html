@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Snakes & Ladders — Royal Edition</title>
+<style>
+:root{
+  --bg:#071b18;
+  --panel:#0c2524;
+  --gold:#e7b83f;
+  --gold2:#ffda6b;
+  --cream:#f7e7ad;
+  --green:#3c7754;
+  --green2:#315f49;
+  --cell:#d8bd78;
+  --ink:#182b25;
+  --shadow:rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--cream);
+  font-family:Georgia, "Times New Roman", serif;
+  background:
+    radial-gradient(circle at 15% 5%,rgba(54,115,75,.35),transparent 28%),
+    radial-gradient(circle at 90% 35%,rgba(201,148,40,.12),transparent 25%),
+    linear-gradient(145deg,#102f26,#061614 70%);
+}
+button{font:inherit;cursor:pointer}
+.app{width:min(100%,760px);margin:auto;padding:18px 14px 40px}
+.header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.crown{font-size:48px;filter:drop-shadow(0 3px 4px #000)}
+h1{margin:0;color:var(--gold2);font-size:clamp(27px,6vw,45px);letter-spacing:1px;text-transform:uppercase}
+.subtitle{margin-top:5px;font-size:clamp(12px,2.7vw,18px);letter-spacing:2px;color:#ead9a1}
+.toolbar{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;margin:12px 0 18px}
+.btn{
+  border:2px solid var(--gold);
+  border-radius:18px;
+  padding:12px 10px;
+  color:#fff5d3;
+  background:linear-gradient(145deg,#193630,#071c1c);
+  box-shadow:0 5px 0 #4c3812,0 9px 20px rgba(0,0,0,.2);
+  font-weight:bold;
+  font-size:clamp(13px,3vw,20px);
+}
+.btn.primary{color:#2b2411;background:linear-gradient(145deg,#ffe071,#bd7e17)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #4c3812}
+.room{display:none;margin-bottom:14px;padding:12px;border:1px solid #8b722d;border-radius:14px;background:#0b2422}
+.room.show{display:block}
+.room-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+input{min-width:0;flex:1;padding:10px;border-radius:10px;border:1px solid #b99a43;background:#071a19;color:white}
+.board-shell{
+  position:relative;
+  padding:11px;
+  border:4px solid #d6a937;
+  border-radius:30px;
+  background:linear-gradient(145deg,#5e471b,#f2d879 18%,#6d501b 82%,#d8b449);
+  box-shadow:0 0 0 2px #4a3616 inset,0 18px 35px var(--shadow);
+}
+.board{
+  position:relative;
+  width:100%;
+  aspect-ratio:1/1;
+  overflow:hidden;
+  border:3px solid #1e2e24;
+  border-radius:15px;
+  background:#1e342c;
+  isolation:isolate;
+}
+.grid{
+  position:absolute;inset:0;
+  display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);
+}
+.cell{
+  position:relative;
+  display:flex;align-items:flex-start;justify-content:flex-start;
+  padding:5px;
+  color:#18281f;
+  font-family:Georgia,serif;
+  font-size:clamp(10px,2.1vw,18px);
+  font-weight:bold;
+  border:1px solid rgba(31,53,37,.38);
+  text-shadow:0 1px rgba(255,255,255,.22);
+}
+.cell:nth-child(odd){background:linear-gradient(135deg,#e7d18e,#c9aa62)}
+.cell:nth-child(even){background:linear-gradient(135deg,#5d9369,#315d45)}
+.cell.start,.cell.finish{background:linear-gradient(135deg,#7a4a1d,#b77b2e);color:#fff2c1}
+.cell.finish{box-shadow:inset 0 0 0 4px #d34c35}
+.cell .label{position:relative;z-index:3}
+.marker{
+  position:absolute;inset:3px;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;
+  font-size:clamp(7px,1.8vw,14px);
+  line-height:1.05;
+  letter-spacing:.5px;
+  border:1px solid rgba(255,235,161,.55);
+  border-radius:6px;
+  background:rgba(57,30,8,.7);
+  color:#ffe6a0;
+  z-index:5;
+}
+.overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:8}
+.token-layer{position:absolute;inset:0;z-index:20;pointer-events:none}
+.token{
+  position:absolute;
+  width:clamp(25px,6.3%,52px);
+  aspect-ratio:1;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:3px solid #fff6db;
+  display:flex;align-items:center;justify-content:center;
+  color:#15251f;
+  font-family:Arial,sans-serif;font-weight:900;
+  box-shadow:0 4px 9px #0008,inset 0 2px 4px #fff9;
+  transition:left .32s ease,top .32s ease;
+}
+.t1{background:#ff5975}.t2{background:#39a8ff}.t3{background:#45dc92}.t4{background:#b78aff}
+.status-panel{margin-top:14px;padding:16px;border:3px solid #c9992f;border-radius:24px;background:linear-gradient(145deg,#0b2523,#071715);text-align:center}
+.die{
+  width:100px;height:100px;margin:0 auto 10px;border-radius:24px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#fff,#c7ccc6);
+  color:#13221d;box-shadow:0 8px 18px #0006;
+  font:70px/1 Arial,sans-serif;
+}
+.turn{font-size:clamp(24px,5vw,37px);color:#ffdb69;font-weight:bold}
+.message{min-height:28px;font-size:clamp(14px,3.4vw,21px);margin:7px 0 13px;color:#f3e5b9}
+.roll{width:100%;font-size:clamp(18px,4vw,25px);padding:15px}
+.players{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+.player{
+  padding:11px 5px;border:2px solid #735c28;border-radius:18px;text-align:center;
+  background:linear-gradient(145deg,#102d29,#071c1b);
+  color:#f7e8b0;transition:.2s;
+}
+.player.active{border-color:#ffe074;box-shadow:0 0 18px #e9b83f55}
+.pdot{width:38px;height:38px;margin:auto;border-radius:50%;border:3px solid white;box-shadow:inset 0 2px 4px #fff8}
+.pname{font-size:clamp(11px,2.5vw,17px);font-weight:bold;margin-top:6px}
+.score{font-size:clamp(13px,3.2vw,21px);color:#ffdb69;font-weight:bold}
+.sections{display:grid;gap:14px;margin-top:18px}
+.card{padding:17px;border:2px solid #6f5828;border-radius:20px;background:#09211f}
+.card h2{margin:0 0 10px;color:#ffda6b;font-size:clamp(21px,5vw,30px)}
+.card p,.card li{font-size:clamp(13px,3.1vw,18px);line-height:1.55}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-family:Arial,sans-serif;font-size:13px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:18px;height:18px;border-radius:50%;display:inline-block;border:1px solid white}
+@media(max-width:420px){
+  .app{padding:12px 9px 30px}
+  .toolbar{grid-template-columns:1fr 1fr}
+  .toolbar .primary{grid-column:span 2}
+  .board-shell{padding:7px;border-radius:21px}
+  .cell{padding:3px}
+  .players{gap:5px}
+  .player{padding:8px 2px;border-radius:13px}
+  .pdot{width:31px;height:31px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="crown">♛</div>
+    <div>
+      <h1>Snakes &amp; Ladders</h1>
+      <div class="subtitle">ROYAL EDITION • ROLL • CLIMB • SURVIVE • WIN</div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn primary" id="createBtn">＋ Create Room</button>
+    <button class="btn" id="inviteBtn">👥 Invite Friends</button>
+    <button class="btn" id="shareBtn">↗ Share Room</button>
+  </div>
+
+  <section class="room" id="roomPanel">
+    <strong>Room created</strong>
+    <div id="roomText">Your private room is ready.</div>
+    <div class="room-row">
+      <input id="roomLink" readonly />
+      <button class="btn" id="copyBtn">Copy Link</button>
+    </div>
+  </section>
+
+  <section class="board-shell">
+    <div class="board" id="board">
+      <div class="grid" id="grid"></div>
+      <svg class="overlay" id="overlay" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+      <div class="token-layer" id="tokens"></div>
+    </div>
+  </section>
+
+  <section class="players" id="players"></section>
+
+  <section class="status-panel">
+    <div class="die" id="die">⚄</div>
+    <div class="turn" id="turn">Player 1</div>
+    <div class="message" id="message">Your turn — roll the dice to begin.</div>
+    <button class="btn primary roll" id="rollBtn">ROLL DICE</button>
+  </section>
+
+  <div class="sections">
+    <section class="card">
+      <h2>Recent Moves</h2>
+      <div id="moves">No moves yet. The royal match is ready to begin.</div>
+    </section>
+    <section class="card">
+      <h2>Game Rules</h2>
+      <ul>
+        <li>The board uses the correct serpentine sequence: 1–10 on the bottom row, then 11–20 in reverse direction, continuing to 91–100 at the top.</li>
+        <li>Players start on square 1 and must reach square 100.</li>
+        <li>Land on the bottom of a ladder to climb upward.</li>
+        <li>Land on a snake's head to slide down to its tail.</li>
+        <li>An exact roll is required to reach 100.</li>
+        <li>Rolling a 6 grants another turn.</li>
+        <li>The first player to reach 100 wins.</li>
+      </ul>
+      <div class="legend">
+        <span><i style="background:#ff5975"></i>Player 1</span>
+        <span><i style="background:#39a8ff"></i>Player 2</span>
+        <span><i style="background:#45dc92"></i>Player 3</span>
+        <span><i style="background:#b78aff"></i>Player 4</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const snakes = {
+    99: 54,
+    89: 68,
+    75: 42,
+    64: 27,
+    52: 11,
+    47: 26,
+    38: 20,
+    31: 8,
+    16: 6
+  };
+  const ladders = {
+    3: 22,
+    8: 26,
+    20: 39,
+    28: 55,
+    36: 57,
+    51: 72,
+    61: 82,
+    71: 92
+  };
+
+  const colors = ['#ff5975','#39a8ff','#45dc92','#b78aff'];
+  const icons = ['♟','◆','★','✦'];
+  const players = [
+    {name:'Player 1',pos:1},
+    {name:'Player 2',pos:1},
+    {name:'Player 3',pos:1},
+    {name:'Player 4',pos:1}
+  ];
+  let current = 0, gameOver = false, rolling = false, roomCode = '';
+
+  const grid = document.getElementById('grid');
+  const board = document.getElementById('board');
+  const overlay = document.getElementById('overlay');
+  const tokens = document.getElementById('tokens');
+  const playersEl = document.getElementById('players');
+  const die = document.getElementById('die');
+  const turn = document.getElementById('turn');
+  const message = document.getElementById('message');
+  const moves = document.getElementById('moves');
+  const rollBtn = document.getElementById('rollBtn');
+
+  function rowCol(n){
+    const rowFromBottom = Math.floor((n-1)/10);
+    const offset = (n-1)%10;
+    const row = 9-rowFromBottom;
+    const col = rowFromBottom%2===0 ? offset : 9-offset;
+    return {row,col};
+  }
+  function point(n){
+    const p=rowCol(n);
+    return {x:(p.col+.5)*100,y:(p.row+.5)*100};
+  }
+  function makeBoard(){
+    grid.innerHTML='';
+    for(let visualRow=0;visualRow<10;visualRow++){
+      for(let col=0;col<10;col++){
+        const rowFromBottom=9-visualRow;
+        const n=rowFromBottom%2===0
+          ? rowFromBottom*10+col+1
+          : rowFromBottom*10+(10-col);
+        const cell=document.createElement('div');
+        cell.className='cell';
+        if(n===1)cell.classList.add('start');
+        if(n===100)cell.classList.add('finish');
+        const label=document.createElement('span');
+        label.className='label';
+        label.textContent=n;
+        cell.appendChild(label);
+        if(n===1){
+          const m=document.createElement('div');m.className='marker';m.innerHTML='START<br><small>1</small>';cell.appendChild(m);
+        }
+        if(n===100){
+          const m=document.createElement('div');m.className='marker';m.innerHTML='FINISH<br><small>100</small>';cell.appendChild(m);
+        }
+        grid.appendChild(cell);
+      }
+    }
+  }
+  function svgEl(tag,attrs){
+    const e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+    Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+    return e;
+  }
+  function drawLadder(a,b){
+    const p1=point(a),p2=point(b);
+    const dx=p2.x-p1.x,dy=p2.y-p1.y,len=Math.hypot(dx,dy);
+    const nx=-dy/len*2.8,ny=dx/len*2.8;
+    const x1=p1.x+nx,y1=p1.y+ny,x2=p2.x+nx,y2=p2.y+ny;
+    const x3=p1.x-nx,y3=p1.y-ny,x4=p2.x-nx,y4=p2.y-ny;
+    overlay.appendChild(svgEl('line',{x1,y1,x2,y2,stroke:'#5c3a15','stroke-width':13,'stroke-linecap':'round',opacity:.75}));
+    overlay.appendChild(svgEl('line',{x1:x3,y1:y3,x2:x4,y2:y4,stroke:'#5c3a15','stroke-width':13,'stroke-linecap':'round',opacity:.75}));
+    overlay.appendChild(svgEl('line',{x1,y1,x2,y2,stroke:'#f5cf63','stroke-width':8,'stroke-linecap':'round'}));
+    overlay.appendChild(svgEl('line',{x1:x3,y1:y3,x2:x4,y2:y4,stroke:'#f5cf63','stroke-width':8,'stroke-linecap':'round'}));
+    for(let i=1;i<6;i++){
+      const t=i/6, cx=p1.x+(p2.x-p1.x)*t,cy=p1.y+(p2.y-p1.y)*t;
+      overlay.appendChild(svgEl('line',{x1:cx+nx*1.6,y1:cy+ny*1.6,x2:cx-nx*1.6,y2:cy-ny*1.6,stroke:'#e6b94b','stroke-width':8,'stroke-linecap':'round'}));
+    }
+  }
+  function drawSnake(head,tail){
+    const p1=point(head),p2=point(tail);
+    const mx=(p1.x+p2.x)/2 + (p2.y-p1.y)*.18;
+    const my=(p1.y+p2.y)/2 - (p2.x-p1.x)*.18;
+    const path=`M ${p1.x} ${p1.y} Q ${mx} ${my} ${p2.x} ${p2.y}`;
+    overlay.appendChild(svgEl('path',{d:path,fill:'none',stroke:'#172b20','stroke-width':24,'stroke-linecap':'round','stroke-linejoin':'round'}));
+    overlay.appendChild(svgEl('path',{d:path,fill:'none',stroke:'#2e9c65','stroke-width':17,'stroke-linecap':'round','stroke-linejoin':'round'}));
+    overlay.appendChild(svgEl('path',{d:path,fill:'none',stroke:'#77d18c','stroke-width':3,'stroke-linecap':'round','stroke-dasharray':'8 12',opacity:.8}));
+    overlay.appendChild(svgEl('ellipse',{cx:p1.x,cy:p1.y,rx:14,ry:18,fill:'#183225',stroke:'#0b1711','stroke-width':3}));
+    overlay.appendChild(svgEl('circle',{cx:p1.x-5,cy:p1.y-4,r:3,fill:'#f8d96b'}));
+    overlay.appendChild(svgEl('circle',{cx:p1.x+5,cy:p1.y-4,r:3,fill:'#f8d96b'}));
+    overlay.appendChild(svgEl('path',{d:`M ${p1.x-4} ${p1.y+8} Q ${p1.x} ${p1.y+13} ${p1.x+4} ${p1.y+8}`,fill:'none',stroke:'#e95a5a','stroke-width':2}));
+  }
+  function drawRoutes(){
+    overlay.innerHTML='';
+    Object.entries(ladders).forEach(([a,b])=>drawLadder(+a,+b));
+    Object.entries(snakes).forEach(([a,b])=>drawSnake(+a,+b));
+  }
+  function renderPlayers(){
+    playersEl.innerHTML='';
+    players.forEach((p,i)=>{
+      const card=document.createElement('div');
+      card.className='player'+(i===current&&!gameOver?' active':'');
+      card.innerHTML=`<div class="pdot" style="background:${colors[i]}"></div>
+        <div class="pname">${icons[i]} ${p.name}</div>
+        <div class="score">${p.pos}/100</div>`;
+      playersEl.appendChild(card);
+    });
+  }
+  function renderTokens(){
+    tokens.innerHTML='';
+    players.forEach((p,i)=>{
+      const pos=point(p.pos);
+      const token=document.createElement('div');
+      token.className='token t'+(i+1);
+      token.style.background=colors[i];
+      token.style.left=(pos.x/10)+'%';
+      token.style.top=(pos.y/10)+'%';
+      token.textContent=icons[i];
+      token.title=`${p.name}: ${p.pos}`;
+      tokens.appendChild(token);
+    });
+  }
+  function logMove(text){
+    const line=document.createElement('div');
+    line.style.padding='8px 0';
+    line.style.borderBottom='1px solid #23413a';
+    line.textContent=text;
+    if(moves.textContent.startsWith('No moves'))moves.innerHTML='';
+    moves.prepend(line);
+  }
+  function updateUI(){
+    renderPlayers();renderTokens();
+    turn.textContent=gameOver?'Game Over':players[current].name;
+  }
+  function diceFace(n){return ['⚀','⚁','⚂','⚃','⚄','⚅'][n-1]}
+  async function roll(){
+    if(rolling||gameOver)return;
+    rolling=true;rollBtn.disabled=true;
+    let ticks=0;
+    const anim=setInterval(()=>{
+      die.textContent=diceFace(1+Math.floor(Math.random()*6));
+      ticks++;
+      if(ticks>=9){
+        clearInterval(anim);
+        const n=1+Math.floor(Math.random()*6);
+        die.textContent=diceFace(n);
+        movePlayer(n);
+      }
+    },75);
+  }
+  function movePlayer(n){
+    const p=players[current],from=p.pos;
+    if(from+n>100){
+      message.textContent=`${p.name} rolled ${n}; an exact roll is needed for 100.`;
+      logMove(`${p.name} rolled ${n} — needs an exact roll`);
+      finishTurn(n);
+      return;
+    }
+    p.pos+=n;
+    message.textContent=`${p.name} moved from ${from} to ${p.pos}.`;
+    logMove(`${p.name} rolled ${n} → ${p.pos}`);
+    updateUI();
+    setTimeout(()=>{
+      if(ladders[p.pos]){
+        const old=p.pos;p.pos=ladders[old];
+        message.textContent=`🪜 ${p.name} climbed the ladder: ${old} → ${p.pos}`;
+        logMove(`${p.name} climbed ladder: ${old} → ${p.pos}`);
+      }else if(snakes[p.pos]){
+        const old=p.pos;p.pos=snakes[old];
+        message.textContent=`🐍 ${p.name} was swallowed by a snake: ${old} → ${p.pos}`;
+        logMove(`${p.name} slid down snake: ${old} → ${p.pos}`);
+      }
+      updateUI();
+      if(p.pos===100){
+        gameOver=true;
+        message.textContent=`🏆 ${p.name} reached 100 and wins the royal match!`;
+        logMove(`🏆 ${p.name} won the game`);
+        rollBtn.textContent='GAME OVER';
+        rolling=false;rollBtn.disabled=true;
+        return;
+      }
+      finishTurn(n);
+    },550);
+  }
+  function finishTurn(n){
+    if(gameOver)return;
+    if(n!==6)current=(current+1)%players.length;
+    updateUI();
+    if(n===6)message.textContent+=' ✨ Rolled a 6 — roll again!';
+    else message.textContent=`${players[current].name}, roll the dice.`;
+    rolling=false;rollBtn.disabled=false;
+  }
+  function reset(){
+    players.forEach(p=>p.pos=1);
+    current=0;gameOver=false;rolling=false;
+    die.textContent='⚄';rollBtn.disabled=false;rollBtn.textContent='ROLL DICE';
+    message.textContent='Your turn — roll the dice to begin.';
+    moves.textContent='No moves yet. The royal match is ready to begin.';
+    updateUI();
+  }
+  function makeRoom(){
+    roomCode=Math.random().toString(36).slice(2,8).toUpperCase();
+    const link=location.href.split('#')[0]+'#room='+roomCode;
+    document.getElementById('roomPanel').classList.add('show');
+    document.getElementById('roomText').textContent=`Room code: ${roomCode}. Share this link with your friends.`;
+    document.getElementById('roomLink').value=link;
+    history.replaceState(null,'','#room='+roomCode);
+  }
+  document.getElementById('createBtn').addEventListener('click',makeRoom);
+  document.getElementById('inviteBtn').addEventListener('click',()=>{
+    makeRoom();
+    document.getElementById('roomPanel').scrollIntoView({behavior:'smooth',block:'center'});
+  });
+  document.getElementById('shareBtn').addEventListener('click',async()=>{
+    if(!roomCode)makeRoom();
+    const link=document.getElementById('roomLink').value;
+    try{
+      if(navigator.share)await navigator.share({title:'Snakes & Ladders Royal Edition',text:'Join my game room!',url:link});
+      else{await navigator.clipboard.writeText(link);alert('Room link copied.');}
+    }catch(e){}
+  });
+  document.getElementById('copyBtn').addEventListener('click',async()=>{
+    const input=document.getElementById('roomLink');
+    input.select();
+    try{await navigator.clipboard.writeText(input.value);alert('Room link copied.');}
+    catch(e){document.execCommand('copy');alert('Room link copied.');}
+  });
+  rollBtn.addEventListener('click',roll);
+  makeBoard();drawRoutes();updateUI();
+})();
+</script>
+</body>
+</html>
